@@ -1,0 +1,2 @@
+export const notFound = (req, res) => res.status(404).json({ success: false, message: `Route ${req.method} ${req.originalUrl} was not found.` });
+export const errorHandler = (error, req, res, next) => { console.error(error); const statusCode = error.statusCode || (error.name === 'ValidationError' ? 422 : 500); res.status(statusCode).json({ success: false, message: statusCode === 500 ? 'An unexpected error occurred.' : error.message }); };

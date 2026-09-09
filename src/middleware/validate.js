@@ -1,0 +1,1 @@
+export const validate = (validator) => (req, res, next) => { const result = validator(req.body); return result.valid ? next() : res.status(422).json({ success: false, message: 'Validation failed.', error: { field: result.field, reason: result.message } }); };
