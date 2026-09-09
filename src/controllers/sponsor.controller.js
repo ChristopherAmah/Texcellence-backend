@@ -1,3 +1,4 @@
 import * as sponsorService from '../services/sponsor.service.js';
-export const create = async (req, res) => res.status(201).json({ success: true, message: 'Sponsor created successfully.', data: { sponsor: await sponsorService.createSponsor(req.body) } });
+export const create = async (req, res) => res.status(201).json({ success: true, message: 'Sponsor created successfully.', data: { sponsor: await sponsorService.createSponsor(req.body, req.user) } });
 export const list = async (req, res) => res.json({ success: true, message: 'Sponsors retrieved successfully.', data: await sponsorService.listSponsors(req.query) });
+export const remove = async (req, res) => { await sponsorService.deleteSponsor(req.params.sponsorId, req.user); return res.json({ success: true, message: 'Sponsor deleted successfully.' }); };

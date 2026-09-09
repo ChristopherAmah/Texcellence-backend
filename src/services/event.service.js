@@ -1,4 +1,5 @@
 import Event from '../models/Event.js';
+import { recordActivity } from './activity.service.js';
 
 export const listEvents = async ({ page = 1, limit = 20, status, year }) => {
   const query = {};
@@ -11,5 +12,5 @@ export const listEvents = async ({ page = 1, limit = 20, status, year }) => {
 };
 
 export const getEvent = async (eventId) => { const event = await Event.findById(eventId).lean(); if (!event) { const error = new Error('Event not found.'); error.statusCode = 404; throw error; } return event; };
-export const createEvent = async (attributes) => Event.create(attributes);
+export const createEvent = async (attributes, actor) => { const event = await Event.create(attributes); await recordActivity({ type: 'EVENT_CREATED', title: 'Event created', description: `${actor.firstName} ${actor.lastName} created ${event.name}.`, actor, entity: event }); return event; };
 export const updateEvent = async (eventId, attributes) => { const event = await Event.findByIdAndUpdate(eventId, attributes, { new: true, runValidators: true }); if (!event) { const error = new Error('Event not found.'); error.statusCode = 404; throw error; } return event; };

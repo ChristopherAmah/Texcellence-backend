@@ -12,6 +12,7 @@ import sponsorRoutes from './routes/sponsor.routes.js';
 import analyticsRoutes from './routes/analytics.routes.js';
 import interactionRoutes from './routes/interaction.routes.js';
 import leadRoutes from './routes/lead.routes.js';
+import activityRoutes from './routes/activity.routes.js';
 
 const app = express();
 app.use(helmet());
@@ -35,6 +36,7 @@ app.use('/api/sponsors', sponsorRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/interactions', interactionRoutes);
 app.use('/api/leads', leadRoutes);
+app.use('/api/activity', activityRoutes);
 app.use(notFound);
 app.use(errorHandler);
 export default app;

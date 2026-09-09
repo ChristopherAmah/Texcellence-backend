@@ -1,6 +1,7 @@
 import { randomInt } from 'node:crypto';
 import Attendee from '../models/Attendee.js';
 import Event from '../models/Event.js';
+import { recordActivity } from './activity.service.js';
 
 const createAttendeeId = async (year) => {
   for (let attempt = 0; attempt < 5; attempt += 1) {
@@ -34,6 +35,7 @@ export const createAttendee = async (user, attributes) => {
   });
   user.attendeeId = attendee._id;
   await user.save();
+  await recordActivity({ type: 'ATTENDEE_REGISTERED', title: 'Attendee registered', description: `${attendee.firstName} ${attendee.lastName} registered for ${event.name}.`, actor: user, entity: attendee, metadata: { attendeeId: attendee.attendeeId, eventName: event.name } });
   return { ...attendee.toSafeObject({ includePrivate: true }), qrCodeValue: attendee.qrCodeValue };
 };
 

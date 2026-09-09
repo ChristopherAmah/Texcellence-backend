@@ -4,6 +4,7 @@ import Interaction from '../models/Interaction.js';
 import Lead from '../models/Lead.js';
 import Sponsor from '../models/Sponsor.js';
 import { calculateLeadScore } from './leadScoring.service.js';
+import { recordActivity } from './activity.service.js';
 
 const permittedAttendee = (attendee) => ({ attendeeId: attendee.attendeeId, firstName: attendee.firstName, lastName: attendee.lastName, jobTitle: attendee.jobTitle, company: attendee.company, industry: attendee.industry, companySize: attendee.companySize, email: attendee.leadSharingConsent ? attendee.email : null, phone: attendee.leadSharingConsent ? attendee.phone : null, leadSharingConsent: attendee.leadSharingConsent });
 const createLeadId = async (year) => `LD${String(year).slice(-2)}-${String((await Lead.countDocuments()) + 1).padStart(6, '0')}`;
@@ -23,8 +24,9 @@ export const createInteraction = async (attributes) => {
   if (!attendee.consent) { const error = new Error('This attendee has not consented to event interactions.'); error.statusCode = 403; throw error; }
   const score = calculateLeadScore(attributes);
   const interaction = await Interaction.create({ eventId: attendee.eventId, attendeeId: attendee._id, sponsorId: sponsor._id, seniority: attributes.seniority, companyFit: attributes.companyFit, purchaseIntent: attributes.purchaseIntent, decisionAuthority: attributes.decisionAuthority, interestLevel: attributes.interestLevel, nextAction: attributes.nextAction, productTopic: attributes.productTopic, notes: attributes.notes, leadQuality: score.grade === 'HOT' ? 'HOT' : score.grade === 'WARM' ? 'WARM' : 'COLD', engagementPoints: score.breakdown.engagement, });
+  await recordActivity({ type: 'INTERACTION_RECORDED', title: 'Sponsor interaction recorded', description: `${sponsor.name} interacted with ${attendee.firstName} ${attendee.lastName}.`, actorName: sponsor.name, actorRole: 'SPONSOR', entity: interaction, metadata: { sponsorId: sponsor.sponsorId, attendeeId: attendee.attendeeId, leadGrade: score.grade } });
   let lead = null;
-  if (attributes.qualifyAsLead) lead = await Lead.create({ eventId: attendee.eventId, leadId: await createLeadId((await Event.findById(attendee.eventId).select('year').lean()).year), attendeeId: attendee._id, sponsorId: sponsor._id, leadScore: score.score, leadGrade: score.grade, interest: attributes.productTopic ? [attributes.productTopic] : [], buyingTimeline: attributes.purchaseIntent, decisionAuthority: attributes.decisionAuthority, budgetKnown: attributes.budgetKnown, followUpRequired: attributes.followUpRequired, preferredFollowUp: attributes.nextAction === 'NONE' ? undefined : attributes.nextAction, notes: attributes.notes });
+  if (attributes.qualifyAsLead) { lead = await Lead.create({ eventId: attendee.eventId, leadId: await createLeadId((await Event.findById(attendee.eventId).select('year').lean()).year), attendeeId: attendee._id, sponsorId: sponsor._id, leadScore: score.score, leadGrade: score.grade, interest: attributes.productTopic ? [attributes.productTopic] : [], buyingTimeline: attributes.purchaseIntent, decisionAuthority: attributes.decisionAuthority, budgetKnown: attributes.budgetKnown, followUpRequired: attributes.followUpRequired, preferredFollowUp: attributes.nextAction === 'NONE' ? undefined : attributes.nextAction, notes: attributes.notes }); await recordActivity({ type: 'LEAD_CREATED', title: 'Lead created', description: `${sponsor.name} qualified ${attendee.firstName} ${attendee.lastName} as a ${score.grade} lead.`, actorName: sponsor.name, actorRole: 'SPONSOR', entity: lead, metadata: { sponsorId: sponsor.sponsorId, leadId: lead.leadId, leadGrade: lead.leadGrade, leadScore: lead.leadScore } }); }
   return { interaction, lead, score };
 };
 
