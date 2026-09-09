@@ -10,6 +10,7 @@ import eventRoutes from './routes/event.routes.js';
 import healthRoutes from './routes/health.routes.js';
 import sponsorRoutes from './routes/sponsor.routes.js';
 import analyticsRoutes from './routes/analytics.routes.js';
+import interactionRoutes from './routes/interaction.routes.js';
 
 const app = express();
 app.use(helmet());
@@ -31,6 +32,7 @@ app.use('/api/attendees', attendeeRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/sponsors', sponsorRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/interactions', interactionRoutes);
 app.use(notFound);
 app.use(errorHandler);
 export default app;

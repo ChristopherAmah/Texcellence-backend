@@ -1,0 +1,3 @@
+import * as interactionService from '../services/interaction.service.js';
+export const scan = async (req, res) => res.json({ success: true, message: 'Attendee QR resolved.', data: { attendee: await interactionService.resolveAttendee(req.params.attendeeId) } });
+export const create = async (req, res) => res.status(201).json({ success: true, message: 'Interaction recorded successfully.', data: await interactionService.createInteraction(req.body) });
