@@ -1,13 +1,9 @@
 import { Router } from 'express';
-import { create, list, scan } from '../controllers/interaction.controller.js';
+import { list } from '../controllers/lead.controller.js';
 import { ROLES } from '../constants/roles.js';
 import { authenticate } from '../middleware/authenticate.js';
 import { authorize } from '../middleware/authorize.js';
-import { validate } from '../middleware/validate.js';
-import { createInteractionValidator } from '../validators/interaction.validator.js';
 
 const router = Router();
-router.get('/scan/:attendeeId', scan);
-router.post('/', validate(createInteractionValidator), create);
 router.get('/', authenticate, authorize(ROLES.ADMIN, ROLES.CWG_STAFF), list);
 export default router;

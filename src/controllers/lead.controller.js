@@ -1,0 +1,2 @@
+import * as leadService from '../services/lead.service.js';
+export const list = async (req, res) => res.json({ success: true, message: 'Leads retrieved successfully.', data: await leadService.listLeads(req.query) });

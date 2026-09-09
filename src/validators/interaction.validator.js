@@ -5,5 +5,6 @@ export const createInteractionValidator = (body) => {
   for (const field of ['attendeeId', 'sponsorId', 'interestLevel', 'nextAction', ...Object.keys(values).slice(0, 5)]) { if (typeof body[field] !== 'string' || !body[field].trim()) return { valid: false, field, message: `${field} is required.` }; if (values[field] && !values[field].includes(body[field])) return { valid: false, field, message: `${field} is invalid.` }; }
   if (body.budgetKnown !== undefined && typeof body.budgetKnown !== 'boolean') return { valid: false, field: 'budgetKnown', message: 'budgetKnown must be boolean.' };
   if (body.followUpRequired !== undefined && typeof body.followUpRequired !== 'boolean') return { valid: false, field: 'followUpRequired', message: 'followUpRequired must be boolean.' };
+  if (body.qualifyAsLead !== undefined && typeof body.qualifyAsLead !== 'boolean') return { valid: false, field: 'qualifyAsLead', message: 'qualifyAsLead must be boolean.' };
   return { valid: true };
 };
