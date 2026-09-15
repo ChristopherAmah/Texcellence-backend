@@ -66,7 +66,7 @@ export const listAttendees = async ({ page = 1, limit = 20, eventId }) => {
 };
 
 export const getAttendee = async (attendeeId) => {
-  const attendee = await Attendee.findOne({ attendeeId }).lean();
+  const attendee = await Attendee.findOne({ attendeeId }).select('+qrCodeValue').populate('eventId', 'name year status').lean();
   if (!attendee) {
     const error = new Error('Attendee not found.');
     error.statusCode = 404;
