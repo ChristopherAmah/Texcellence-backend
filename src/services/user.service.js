@@ -1,0 +1,19 @@
+import bcrypt from 'bcrypt';
+import User from '../models/User.js';
+import { recordActivity } from './activity.service.js';
+
+export const listUsers = async ({ page = 1, limit = 50, role } = {}) => {
+  const query = role ? { role } : {};
+  const safeLimit = Math.min(Math.max(Number(limit) || 50, 1), 100);
+  const safePage = Math.max(Number(page) || 1, 1);
+  const [users, total] = await Promise.all([User.find(query).sort({ createdAt: -1 }).skip((safePage - 1) * safeLimit).limit(safeLimit).lean(), User.countDocuments(query)]);
+  return { users: users.map(({ passwordHash, ...user }) => user), pagination: { page: safePage, limit: safeLimit, total, totalPages: Math.ceil(total / safeLimit) } };
+};
+
+export const createAdminUser = async ({ firstName, lastName, email, password, role }, actor) => {
+  const normalizedEmail = email.toLowerCase().trim();
+  if (await User.exists({ email: normalizedEmail })) { const error = new Error('An account with this email already exists.'); error.statusCode = 409; throw error; }
+  const user = await User.create({ firstName, lastName, email: normalizedEmail, passwordHash: await bcrypt.hash(password, 12), role });
+  await recordActivity({ type: 'USER_CREATED', title: `New ${role.toLowerCase()} created`, description: `${actor.firstName} ${actor.lastName} created ${role.toLowerCase()} account for ${firstName} ${lastName}.`, actor, entity: user, metadata: { email: normalizedEmail, role } });
+  return user.toSafeObject();
+};

@@ -16,22 +16,24 @@ const ADMIN_EMAIL = options.EMAIL || configuredEmail;
 const ADMIN_PASSWORD = options.PASSWORD || configuredPassword;
 const ADMIN_FIRST_NAME_VALUE = options.FIRST_NAME || ADMIN_FIRST_NAME;
 const ADMIN_LAST_NAME_VALUE = options.LAST_NAME || ADMIN_LAST_NAME;
+const ADMIN_ROLE = (options.ROLE || ROLES.ADMIN).toUpperCase();
 
 const createAdmin = async () => {
   if (!ADMIN_EMAIL || !ADMIN_PASSWORD) throw new Error('ADMIN_EMAIL and ADMIN_PASSWORD must be set to create an administrator.');
   if (ADMIN_PASSWORD.length < 12) throw new Error('ADMIN_PASSWORD must be at least 12 characters.');
+  if (![ROLES.ADMIN, ROLES.SUPERADMIN].includes(ADMIN_ROLE)) throw new Error('ROLE must be ADMIN or SUPERADMIN.');
   await connectDatabase();
   const email = ADMIN_EMAIL.toLowerCase().trim();
   const existingUser = await User.findOne({ email });
   if (existingUser) {
-    existingUser.role = ROLES.ADMIN;
+    existingUser.role = ADMIN_ROLE;
     existingUser.isActive = true;
     existingUser.passwordHash = await bcrypt.hash(ADMIN_PASSWORD, 12);
     await existingUser.save();
     console.info('Administrator account promoted or updated.');
     return;
   }
-  await User.create({ firstName: ADMIN_FIRST_NAME_VALUE, lastName: ADMIN_LAST_NAME_VALUE, email, passwordHash: await bcrypt.hash(ADMIN_PASSWORD, 12), role: ROLES.ADMIN });
+  await User.create({ firstName: ADMIN_FIRST_NAME_VALUE, lastName: ADMIN_LAST_NAME_VALUE, email, passwordHash: await bcrypt.hash(ADMIN_PASSWORD, 12), role: ADMIN_ROLE });
   console.info('Administrator created.');
 };
 
