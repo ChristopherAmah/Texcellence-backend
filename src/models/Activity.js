@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 
 const activitySchema = new mongoose.Schema({
-  type: { type: String, enum: ['ATTENDEE_REGISTERED', 'EVENT_CREATED', 'EVENT_UPDATED', 'SPONSOR_CREATED', 'SPONSOR_DELETED', 'INTERACTION_RECORDED', 'LEAD_CREATED', 'USER_CREATED', 'USER_DELETED'], required: true, index: true },
+  type: { type: String, enum: ['ATTENDEE_REGISTERED', 'EVENT_CREATED', 'EVENT_UPDATED', 'SPONSOR_CREATED', 'SPONSOR_DELETED', 'INTERACTION_RECORDED', 'LEAD_CREATED', 'USER_CREATED', 'USER_DELETED', 'USER_ROLE_CHANGED'], required: true, index: true },
   title: { type: String, required: true, trim: true, maxlength: 160 },
   description: { type: String, required: true, trim: true, maxlength: 400 },
   actorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },

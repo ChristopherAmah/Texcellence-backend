@@ -11,3 +11,5 @@ export const createAdminUserValidator = (body) => {
   if (!creatableRoles.includes(body.role)) return { valid: false, field: 'role', message: 'role must be ADMIN or SUPERADMIN.' };
   return { valid: true };
 };
+
+export const updateUserRoleValidator = (body) => !creatableRoles.includes(body.role) ? { valid: false, field: 'role', message: 'role must be ADMIN or SUPERADMIN.' } : { valid: true };

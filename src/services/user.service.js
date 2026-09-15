@@ -33,3 +33,16 @@ export const deleteUser = async (userId, actor) => {
   await target.deleteOne();
   await recordActivity({ type: 'USER_DELETED', title: `${target.role.toLowerCase()} account deleted`, description: `${actor.firstName} ${actor.lastName} deleted the ${target.role.toLowerCase()} account for ${target.firstName} ${target.lastName}.`, actor, metadata: { email: target.email, role: target.role } });
 };
+
+export const updateUserRole = async (userId, role, actor) => {
+  if (actor.role !== 'SUPERADMIN') { const error = new Error('Only superadmins can change account roles.'); error.statusCode = 403; throw error; }
+  const target = await User.findById(userId);
+  if (!target) { const error = new Error('User not found.'); error.statusCode = 404; throw error; }
+  if (target.role === role) return target.toSafeObject();
+  if (target.role === 'SUPERADMIN' && role !== 'SUPERADMIN' && (await User.countDocuments({ role: 'SUPERADMIN' })) <= 1) { const error = new Error('At least one superadmin account must remain.'); error.statusCode = 400; throw error; }
+  const previousRole = target.role;
+  target.role = role;
+  await target.save();
+  await recordActivity({ type: 'USER_ROLE_CHANGED', title: 'Account role changed', description: `${actor.firstName} ${actor.lastName} changed ${target.firstName} ${target.lastName} from ${previousRole.toLowerCase()} to ${role.toLowerCase()}.`, actor, entity: target, metadata: { email: target.email, previousRole, role } });
+  return target.toSafeObject();
+};
