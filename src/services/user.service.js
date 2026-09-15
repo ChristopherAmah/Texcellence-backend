@@ -15,12 +15,7 @@ export const listUsers = async ({ page = 1, limit = 50, role } = {}) => {
 
 export const createAdminUser = async ({ firstName, lastName, email, password, role }, actor) => {
   const normalizedEmail = email.toLowerCase().trim();
-  const superadminCount = await User.countDocuments({ role: 'SUPERADMIN' });
-  if (actor.role !== 'SUPERADMIN') {
-    // Bootstrap exception: an admin may create the very first superadmin when none exists yet.
-    const bootstrapAllowed = role === 'SUPERADMIN' && superadminCount === 0;
-    if (!bootstrapAllowed) { const error = new Error('Only superadmins can create admin or superadmin accounts.'); error.statusCode = 403; throw error; }
-  }
+  if (actor.role !== 'SUPERADMIN') { const error = new Error('Only superadmins can create admin or superadmin accounts.'); error.statusCode = 403; throw error; }
   if (await User.exists({ email: normalizedEmail })) { const error = new Error('An account with this email already exists.'); error.statusCode = 409; throw error; }
   const user = await User.create({ firstName, lastName, email: normalizedEmail, passwordHash: await bcrypt.hash(password, 12), role });
   await recordActivity({ type: 'USER_CREATED', title: `New ${role.toLowerCase()} created`, description: `${actor.firstName} ${actor.lastName} created ${role.toLowerCase()} account for ${firstName} ${lastName}.`, actor, entity: user, metadata: { email: normalizedEmail, role } });

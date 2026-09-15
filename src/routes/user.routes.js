@@ -9,7 +9,7 @@ import { createAdminUserValidator, updateUserRoleValidator } from '../validators
 const router = Router();
 router.use(authenticate, authorize(ROLES.SUPERADMIN, ROLES.ADMIN));
 router.get('/', list);
-router.post('/', validate(createAdminUserValidator), create);
+router.post('/', authorize(ROLES.SUPERADMIN), validate(createAdminUserValidator), create);
 router.patch('/:userId/role', authorize(ROLES.SUPERADMIN), validate(updateUserRoleValidator), updateRole);
 router.delete('/:userId', authorize(ROLES.SUPERADMIN), remove);
 export default router;
