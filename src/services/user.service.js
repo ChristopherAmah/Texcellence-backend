@@ -2,8 +2,11 @@ import bcrypt from 'bcrypt';
 import User from '../models/User.js';
 import { recordActivity } from './activity.service.js';
 
+const manageableRoles = ['ADMIN', 'SUPERADMIN'];
+
 export const listUsers = async ({ page = 1, limit = 50, role } = {}) => {
-  const query = role ? { role } : {};
+  // The users directory only manages control room accounts, not attendees or sponsor staff.
+  const query = role && manageableRoles.includes(role) ? { role } : { role: { $in: manageableRoles } };
   const safeLimit = Math.min(Math.max(Number(limit) || 50, 1), 100);
   const safePage = Math.max(Number(page) || 1, 1);
   const [users, total] = await Promise.all([User.find(query).sort({ createdAt: -1 }).skip((safePage - 1) * safeLimit).limit(safeLimit).lean(), User.countDocuments(query)]);
