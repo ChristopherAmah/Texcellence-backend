@@ -18,4 +18,7 @@ const interactionSchema = new mongoose.Schema({
   engagementPoints: { type: Number, min: 0, max: 100, required: true },
 }, { timestamps: true });
 
+interactionSchema.index({ eventId: 1, createdAt: -1 });
+interactionSchema.index({ sponsorId: 1, createdAt: -1 });
+
 export default mongoose.model('Interaction', interactionSchema);

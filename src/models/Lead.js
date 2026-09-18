@@ -17,4 +17,7 @@ const leadSchema = new mongoose.Schema({
   notes: { type: String, trim: true, maxlength: 1000 },
 }, { timestamps: true });
 
+leadSchema.index({ createdAt: -1 });
+leadSchema.index({ leadGrade: 1 });
+
 export default mongoose.model('Lead', leadSchema);

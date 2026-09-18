@@ -74,3 +74,26 @@ export const getAttendee = async (attendeeId) => {
   }
   return attendee;
 };
+
+export const registerAttendee = async (attributes) => {
+  const event = await Event.findOne({ name: /^te(?:ch)?xcellence$/i, status: { $in: ['REGISTRATION_OPEN', 'LIVE'] } }).sort({ startDate: 1 });
+  if (!event) {
+    const error = new Error('TEXCELLENCE registration is not currently open.');
+    error.statusCode = 400;
+    throw error;
+  }
+  const email = attributes.email.toLowerCase().trim();
+  const attendeeId = await createAttendeeId(event.year);
+  let attendee;
+  try {
+    attendee = await Attendee.create({ ...attributes, email, eventId: event._id, attendeeId, qrCodeValue: attendeeId });
+  } catch (error) {
+    if (error.code === 11000 && error.keyPattern?.eventId && error.keyPattern?.email) {
+      error.statusCode = 409;
+      error.message = 'This email is already registered for the event.';
+    }
+    throw error;
+  }
+  await recordActivity({ type: 'ATTENDEE_REGISTERED', title: 'Attendee registered', description: `${attendee.firstName} ${attendee.lastName} registered for ${event.name}.`, entity: attendee, metadata: { attendeeId: attendee.attendeeId, eventName: event.name } });
+  return { ...attendee.toSafeObject({ includePrivate: true }), qrCodeValue: attendee.qrCodeValue };
+};

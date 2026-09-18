@@ -32,4 +32,7 @@ attendeeSchema.methods.toSafeObject = function toSafeObject({ includePrivate = f
   return { ...attendee, id: attendee._id.toString() };
 };
 
+attendeeSchema.index({ eventId: 1, email: 1 }, { unique: true });
+attendeeSchema.index({ eventId: 1, createdAt: -1 });
+
 export default mongoose.model('Attendee', attendeeSchema);

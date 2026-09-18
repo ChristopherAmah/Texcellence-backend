@@ -7,4 +7,5 @@ const userSchema = new mongoose.Schema({
   role: { type: String, enum: roleValues, default: ROLES.ATTENDEE }, sponsorId: { type: mongoose.Schema.Types.ObjectId, ref: 'Sponsor' }, attendeeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Attendee' }, isActive: { type: Boolean, default: true },
 }, { timestamps: true });
 userSchema.methods.toSafeObject = function toSafeObject() { return { id: this._id.toString(), firstName: this.firstName, lastName: this.lastName, email: this.email, role: this.role, sponsorId: this.sponsorId, attendeeId: this.attendeeId, isActive: this.isActive }; };
+userSchema.index({ role: 1, createdAt: -1 });
 export default mongoose.model('User', userSchema);

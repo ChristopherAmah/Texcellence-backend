@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { create, getById, list, me } from '../controllers/attendee.controller.js';
+import { create, getById, list, me, register } from '../controllers/attendee.controller.js';
 import { ROLES } from '../constants/roles.js';
 import { authenticate } from '../middleware/authenticate.js';
 import { authorize } from '../middleware/authorize.js';
@@ -7,6 +7,7 @@ import { validate } from '../middleware/validate.js';
 import { createAttendeeValidator } from '../validators/attendee.validator.js';
 
 const router = Router();
+router.post('/register', validate(createAttendeeValidator), register);
 router.use(authenticate);
 router.post('/', authorize(ROLES.ATTENDEE), validate(createAttendeeValidator), create);
 router.get('/me', authorize(ROLES.ATTENDEE), me);

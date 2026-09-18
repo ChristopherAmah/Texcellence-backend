@@ -11,4 +11,5 @@ const sponsorSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 sponsorSchema.index({ eventId: 1, name: 1 }, { unique: true });
+sponsorSchema.index({ eventId: 1, createdAt: -1 });
 export default mongoose.model('Sponsor', sponsorSchema);
