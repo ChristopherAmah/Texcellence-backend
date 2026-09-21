@@ -1,3 +1,4 @@
+import compression from 'compression';
 import cors from 'cors';
 import express from 'express';
 import rateLimit from 'express-rate-limit';
@@ -17,6 +18,7 @@ import userRoutes from './routes/user.routes.js';
 
 const app = express();
 app.use(helmet());
+app.use(compression());
 app.use(cors({ origin: process.env.CORS_ORIGIN?.split(',') || true }));
 app.use(express.json({ limit: '100kb' }));
 app.use(sanitizeRequest);
