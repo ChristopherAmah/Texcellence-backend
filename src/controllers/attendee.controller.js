@@ -5,3 +5,4 @@ export const create = async (req, res) => res.status(201).json({ success: true, 
 export const me = async (req, res) => res.json({ success: true, message: 'Attendee profile retrieved successfully.', data: { attendee: await attendeeService.getOwnAttendee(req.user) } });
 export const list = async (req, res) => res.json({ success: true, message: 'Attendees retrieved successfully.', data: await attendeeService.listAttendees(req.query) });
 export const getById = async (req, res) => res.json({ success: true, message: 'Attendee retrieved successfully.', data: { attendee: await attendeeService.getAttendee(req.params.attendeeId) } });
+export const importAttendees = async (req, res) => res.status(201).json({ success: true, message: 'Attendee import completed.', data: await attendeeService.importAttendees(req.user, req.body) });

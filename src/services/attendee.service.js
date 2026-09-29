@@ -1,8 +1,12 @@
 import { randomInt } from 'node:crypto';
+import mongoose from 'mongoose';
 import Attendee from '../models/Attendee.js';
 import Event from '../models/Event.js';
 import { recordActivity } from './activity.service.js';
 import { sendAttendeeConfirmationEmail } from './email.service.js';
+import { validateImportedAttendee } from '../validators/attendee.validator.js';
+
+const importableFields = ['firstName', 'lastName', 'email', 'phone', 'jobTitle', 'company', 'industry', 'companySize', 'country', 'city', 'attendeeType', 'consent', 'leadSharingConsent'];
 
 const createAttendeeId = async (year) => {
   for (let attempt = 0; attempt < 5; attempt += 1) {
@@ -98,4 +102,65 @@ export const registerAttendee = async (attributes) => {
   await recordActivity({ type: 'ATTENDEE_REGISTERED', title: 'Attendee registered', description: `${attendee.firstName} ${attendee.lastName} registered for ${event.name}.`, entity: attendee, metadata: { attendeeId: attendee.attendeeId, eventName: event.name } });
   sendAttendeeConfirmationEmail({ attendee, event }).catch(() => {});
   return { ...attendee.toSafeObject({ includePrivate: true }), qrCodeValue: attendee.qrCodeValue };
+};
+
+export const importAttendees = async (actor, { eventId, attendees }) => {
+  if (!mongoose.isValidObjectId(eventId)) {
+    const error = new Error('The selected event is not valid.');
+    error.statusCode = 422;
+    throw error;
+  }
+  const event = await Event.findById(eventId);
+  if (!event) {
+    const error = new Error('The selected event was not found.');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const existingEmails = new Set((await Attendee.find({ eventId: event._id }, 'email').lean()).map(({ email }) => email));
+  const seenEmails = new Set();
+  const imported = [];
+  const errors = [];
+
+  for (let index = 0; index < attendees.length; index += 1) {
+    const source = attendees[index] || {};
+    const rowNumber = Number(source.rowNumber) || index + 2;
+    const attributes = Object.fromEntries(importableFields
+      .filter((field) => source[field] !== undefined && source[field] !== null && source[field] !== '')
+      .map((field) => [field, typeof source[field] === 'string' ? source[field].trim() : source[field]]));
+    attributes.email = typeof attributes.email === 'string' ? attributes.email.toLowerCase() : attributes.email;
+    attributes.attendeeType = typeof attributes.attendeeType === 'string' ? attributes.attendeeType.toUpperCase().replace(/[\s-]+/g, '_') : attributes.attendeeType;
+
+    const validation = validateImportedAttendee(attributes);
+    if (!validation.valid) {
+      errors.push({ rowNumber, email: attributes.email || '', field: validation.field, message: validation.message });
+      continue;
+    }
+    if (existingEmails.has(attributes.email) || seenEmails.has(attributes.email)) {
+      errors.push({ rowNumber, email: attributes.email, field: 'email', message: 'This email is already registered for the event.' });
+      continue;
+    }
+
+    try {
+      const attendeeId = await createAttendeeId(event.year);
+      const attendee = await Attendee.create({ ...attributes, eventId: event._id, attendeeId, qrCodeValue: attendeeId });
+      seenEmails.add(attributes.email);
+      imported.push({ rowNumber, attendeeId, firstName: attendee.firstName, lastName: attendee.lastName, email: attendee.email });
+      sendAttendeeConfirmationEmail({ attendee, event }).catch(() => {});
+    } catch (error) {
+      errors.push({ rowNumber, email: attributes.email, message: error.code === 11000 ? 'This email is already registered for the event.' : error.message });
+    }
+  }
+
+  if (imported.length) {
+    await recordActivity({
+      type: 'ATTENDEE_REGISTERED',
+      title: 'Attendees imported',
+      description: `${actor.firstName} ${actor.lastName} imported ${imported.length} attendee${imported.length === 1 ? '' : 's'} for ${event.name}.`,
+      actor,
+      metadata: { eventId: event._id, eventName: event.name, imported: imported.length, rejected: errors.length },
+    });
+  }
+
+  return { imported, errors, summary: { total: attendees.length, imported: imported.length, rejected: errors.length } };
 };
