@@ -7,6 +7,14 @@ import { sendAttendeeConfirmationEmail } from './email.service.js';
 import { validateImportedAttendee } from '../validators/attendee.validator.js';
 
 const importableFields = ['firstName', 'lastName', 'email', 'phone', 'jobTitle', 'company', 'industry', 'companySize', 'country', 'city', 'attendeeType', 'consent', 'leadSharingConsent'];
+const normalizeImportedPhone = (value) => {
+  const phone = String(value || '').trim();
+  if (/^[+-]?\d+(?:\.\d+)?e[+-]?\d+$/i.test(phone)) {
+    const expanded = Number(phone);
+    if (Number.isSafeInteger(expanded)) return String(expanded);
+  }
+  return phone;
+};
 
 const createAttendeeId = async (year) => {
   for (let attempt = 0; attempt < 5; attempt += 1) {
@@ -117,9 +125,10 @@ export const importAttendees = async (actor, { eventId, attendees }) => {
     throw error;
   }
 
-  const existingEmails = new Set((await Attendee.find({ eventId: event._id }, 'email').lean()).map(({ email }) => email));
+  const existingByEmail = new Map((await Attendee.find({ eventId: event._id }, 'email company jobTitle').lean()).map((attendee) => [attendee.email, attendee]));
   const seenEmails = new Set();
   const imported = [];
+  const updated = [];
   const errors = [];
 
   for (let index = 0; index < attendees.length; index += 1) {
@@ -128,6 +137,9 @@ export const importAttendees = async (actor, { eventId, attendees }) => {
     const attributes = Object.fromEntries(importableFields
       .filter((field) => source[field] !== undefined && source[field] !== null && source[field] !== '')
       .map((field) => [field, typeof source[field] === 'string' ? source[field].trim() : source[field]]));
+    if (!attributes.company) attributes.company = String(source.organization || source.organisation || '').trim() || undefined;
+    if (!attributes.jobTitle) attributes.jobTitle = String(source.title || source.designation || '').trim() || undefined;
+    if (attributes.phone) attributes.phone = normalizeImportedPhone(attributes.phone);
     attributes.email = typeof attributes.email === 'string' ? attributes.email.toLowerCase() : attributes.email;
     attributes.attendeeType = typeof attributes.attendeeType === 'string' ? attributes.attendeeType.toUpperCase().replace(/[\s-]+/g, '_') : attributes.attendeeType;
 
@@ -136,15 +148,29 @@ export const importAttendees = async (actor, { eventId, attendees }) => {
       errors.push({ rowNumber, email: attributes.email || '', field: validation.field, message: validation.message });
       continue;
     }
-    if (existingEmails.has(attributes.email) || seenEmails.has(attributes.email)) {
+    if (seenEmails.has(attributes.email)) {
       errors.push({ rowNumber, email: attributes.email, field: 'email', message: 'This email is already registered for the event.' });
+      continue;
+    }
+    seenEmails.add(attributes.email);
+
+    const existingAttendee = existingByEmail.get(attributes.email);
+    if (existingAttendee) {
+      const updates = {};
+      if (!existingAttendee.company && attributes.company) updates.company = attributes.company;
+      if (!existingAttendee.jobTitle && attributes.jobTitle) updates.jobTitle = attributes.jobTitle;
+      if (Object.keys(updates).length) {
+        await Attendee.findByIdAndUpdate(existingAttendee._id, updates, { runValidators: true });
+        updated.push({ rowNumber, email: attributes.email, fields: Object.keys(updates) });
+      } else {
+        errors.push({ rowNumber, email: attributes.email, field: 'email', message: 'This email is already registered and has no missing company or job title.' });
+      }
       continue;
     }
 
     try {
       const attendeeId = await createAttendeeId(event.year);
       const attendee = await Attendee.create({ ...attributes, eventId: event._id, attendeeId, qrCodeValue: attendeeId });
-      seenEmails.add(attributes.email);
       imported.push({ rowNumber, attendeeId, firstName: attendee.firstName, lastName: attendee.lastName, email: attendee.email });
       sendAttendeeConfirmationEmail({ attendee, event }).catch(() => {});
     } catch (error) {
@@ -152,15 +178,15 @@ export const importAttendees = async (actor, { eventId, attendees }) => {
     }
   }
 
-  if (imported.length) {
+  if (imported.length || updated.length) {
     await recordActivity({
       type: 'ATTENDEE_REGISTERED',
       title: 'Attendees imported',
-      description: `${actor.firstName} ${actor.lastName} imported ${imported.length} attendee${imported.length === 1 ? '' : 's'} for ${event.name}.`,
+      description: `${actor.firstName} ${actor.lastName} imported ${imported.length} and updated ${updated.length} attendee${imported.length + updated.length === 1 ? '' : 's'} for ${event.name}.`,
       actor,
-      metadata: { eventId: event._id, eventName: event.name, imported: imported.length, rejected: errors.length },
+      metadata: { eventId: event._id, eventName: event.name, imported: imported.length, updated: updated.length, rejected: errors.length },
     });
   }
 
-  return { imported, errors, summary: { total: attendees.length, imported: imported.length, rejected: errors.length } };
+  return { imported, updated, errors, summary: { total: attendees.length, imported: imported.length, updated: updated.length, rejected: errors.length } };
 };
