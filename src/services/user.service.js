@@ -16,10 +16,22 @@ export const listUsers = async ({ page = 1, limit = 50, role } = {}) => {
 export const createAdminUser = async ({ firstName, lastName, email, password, role }, actor) => {
   const normalizedEmail = email.toLowerCase().trim();
   if (actor.role !== 'SUPERADMIN') { const error = new Error('Only superadmins can create admin or superadmin accounts.'); error.statusCode = 403; throw error; }
-  if (await User.exists({ email: normalizedEmail })) { const error = new Error('An account with this email already exists.'); error.statusCode = 409; throw error; }
+  const existingUser = await User.findOne({ email: normalizedEmail });
+  if (existingUser) {
+    if (existingUser.role !== 'ATTENDEE') { const error = new Error('A control room account with this email already exists.'); error.statusCode = 409; throw error; }
+    existingUser.firstName = firstName;
+    existingUser.lastName = lastName;
+    existingUser.passwordHash = await bcrypt.hash(password, 12);
+    existingUser.role = role;
+    existingUser.isActive = true;
+    existingUser.mustChangePassword = true;
+    await existingUser.save();
+    await recordActivity({ type: 'USER_ROLE_CHANGED', title: `Attendee promoted to ${role.toLowerCase()}`, description: `${actor.firstName} ${actor.lastName} promoted ${firstName} ${lastName} from attendee to ${role.toLowerCase()}.`, actor, entity: existingUser, metadata: { email: normalizedEmail, previousRole: 'ATTENDEE', role } });
+    return { ...existingUser.toSafeObject(), accountAction: 'PROMOTED' };
+  }
   const user = await User.create({ firstName, lastName, email: normalizedEmail, passwordHash: await bcrypt.hash(password, 12), role, mustChangePassword: true });
   await recordActivity({ type: 'USER_CREATED', title: `New ${role.toLowerCase()} created`, description: `${actor.firstName} ${actor.lastName} created ${role.toLowerCase()} account for ${firstName} ${lastName}.`, actor, entity: user, metadata: { email: normalizedEmail, role } });
-  return user.toSafeObject();
+  return { ...user.toSafeObject(), accountAction: 'CREATED' };
 };
 
 export const deleteUser = async (userId, actor) => {
