@@ -7,3 +7,23 @@ const createToken = (user) => jwt.sign({ sub: user._id.toString(), role: user.ro
 export const registerUser = async ({ firstName, lastName, email, password }) => { const normalizedEmail = email.toLowerCase().trim(); if (await User.exists({ email: normalizedEmail })) { const error = new Error('An account with this email already exists.'); error.statusCode = 409; throw error; } const user = await User.create({ firstName, lastName, email: normalizedEmail, passwordHash: await bcrypt.hash(password, 12) }); await recordActivity({ type: 'ATTENDEE_REGISTERED', title: 'New account registered', description: `${firstName} ${lastName} created an attendee account.`, actor: user, entity: user }); return { user: user.toSafeObject(), token: createToken(user) }; };
 export const registerAdmin = async ({ firstName, lastName, email, password }) => { const normalizedEmail = email.toLowerCase().trim(); if (await User.exists({ email: normalizedEmail })) { const error = new Error('An account with this email already exists.'); error.statusCode = 409; throw error; } const user = await User.create({ firstName, lastName, email: normalizedEmail, passwordHash: await bcrypt.hash(password, 12), role: 'ADMIN' }); await recordActivity({ type: 'USER_CREATED', title: 'Admin account registered', description: `${firstName} ${lastName} registered an admin account.`, actor: user, entity: user }); return { user: user.toSafeObject(), token: createToken(user) }; };
 export const loginUser = async ({ email, password }) => { const user = await User.findOne({ email: email.toLowerCase().trim() }).select('+passwordHash'); if (!user || !(await bcrypt.compare(password, user.passwordHash))) { const error = new Error('Invalid email or password.'); error.statusCode = 401; throw error; } if (!user.isActive) { const error = new Error('This account is inactive.'); error.statusCode = 403; throw error; } return { user: user.toSafeObject(), token: createToken(user) }; };
+
+export const changePassword = async (authenticatedUser, { currentPassword, newPassword }) => {
+  const user = await User.findById(authenticatedUser._id).select('+passwordHash');
+  if (!user || !(await bcrypt.compare(currentPassword, user.passwordHash))) {
+    const error = new Error('The current password is incorrect.');
+    error.statusCode = 401;
+    throw error;
+  }
+  if (await bcrypt.compare(newPassword, user.passwordHash)) {
+    const error = new Error('Your new password must be different from the temporary password.');
+    error.statusCode = 422;
+    throw error;
+  }
+  user.passwordHash = await bcrypt.hash(newPassword, 12);
+  user.mustChangePassword = false;
+  user.passwordChangedAt = new Date();
+  await user.save();
+  await recordActivity({ type: 'USER_PASSWORD_CHANGED', title: 'Password changed', description: `${user.firstName} ${user.lastName} changed their password.`, actor: user, entity: user });
+  return { user: user.toSafeObject(), token: createToken(user) };
+};

@@ -17,7 +17,7 @@ export const createAdminUser = async ({ firstName, lastName, email, password, ro
   const normalizedEmail = email.toLowerCase().trim();
   if (actor.role !== 'SUPERADMIN') { const error = new Error('Only superadmins can create admin or superadmin accounts.'); error.statusCode = 403; throw error; }
   if (await User.exists({ email: normalizedEmail })) { const error = new Error('An account with this email already exists.'); error.statusCode = 409; throw error; }
-  const user = await User.create({ firstName, lastName, email: normalizedEmail, passwordHash: await bcrypt.hash(password, 12), role });
+  const user = await User.create({ firstName, lastName, email: normalizedEmail, passwordHash: await bcrypt.hash(password, 12), role, mustChangePassword: true });
   await recordActivity({ type: 'USER_CREATED', title: `New ${role.toLowerCase()} created`, description: `${actor.firstName} ${actor.lastName} created ${role.toLowerCase()} account for ${firstName} ${lastName}.`, actor, entity: user, metadata: { email: normalizedEmail, role } });
   return user.toSafeObject();
 };
