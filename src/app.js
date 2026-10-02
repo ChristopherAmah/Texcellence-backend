@@ -17,6 +17,8 @@ import activityRoutes from './routes/activity.routes.js';
 import userRoutes from './routes/user.routes.js';
 
 const app = express();
+const trustedProxyHops = Number.parseInt(process.env.TRUST_PROXY_HOPS || '0', 10);
+if (trustedProxyHops > 0) app.set('trust proxy', trustedProxyHops);
 app.use(helmet());
 app.use(compression());
 app.use(cors({ origin: process.env.CORS_ORIGIN?.split(',') || true }));

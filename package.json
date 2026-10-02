@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "node --watch server.js",
     "start": "node server.js",
-    "seed:admin": "node scripts/createAdmin.js"
+    "seed:admin": "node scripts/createAdmin.js",
+    "cleanup:engagement": "node scripts/clearEngagementData.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
