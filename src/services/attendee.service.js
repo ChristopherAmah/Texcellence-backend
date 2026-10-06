@@ -67,8 +67,20 @@ export const getOwnAttendee = async (user) => {
   return { ...attendee.toSafeObject({ includePrivate: true }), qrCodeValue: attendee.qrCodeValue };
 };
 
-export const listAttendees = async ({ page = 1, limit = 20, eventId }) => {
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+export const listAttendees = async ({ page = 1, limit = 20, eventId, search = '' }) => {
   const query = eventId ? { eventId } : {};
+  const searchTerms = String(search).trim().split(/\s+/).filter(Boolean).slice(0, 5);
+  if (searchTerms.length) {
+    query.$and = searchTerms.map((term) => {
+      const pattern = new RegExp(escapeRegex(term), 'i');
+      return { $or: [
+        { firstName: pattern }, { lastName: pattern }, { email: pattern },
+        { phone: pattern }, { jobTitle: pattern }, { company: pattern }, { attendeeId: pattern },
+      ] };
+    });
+  }
   const safeLimit = Math.min(Math.max(Number(limit) || 20, 1), 100);
   const safePage = Math.max(Number(page) || 1, 1);
   const [attendees, total] = await Promise.all([
